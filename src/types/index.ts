@@ -24,10 +24,6 @@ export interface IAppData {
 	checkValidation(data: Record<keyof IOrder, string>): boolean;
 }
 
-export interface IOrder extends IShippingForm, IContactForm {
-    
-}
-
 export interface IOrderResult {
 	id: string;
 	total: number;
@@ -40,6 +36,7 @@ export interface IBasket {
 
 export type TCategory = 'софт-скил' | 'хард-скил' | 'кнопка' | 'дополнительное' | 'другое';
 export type TPayment =  'card' | 'cash';
+export type IOrder = IShippingForm & IContactForm;
 export type IBasketItem = Pick<IProduct, 'id' | 'title' | 'price'>;
 export type IShippingForm = Pick<IOrder, 'payment' | 'address'>
 export type IContactForm = Pick<IOrder, 'email' | 'phone'>
