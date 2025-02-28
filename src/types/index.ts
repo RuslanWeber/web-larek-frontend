@@ -8,7 +8,7 @@ export interface IProduct {
     price: number | null;
 }
 
-export interface IProductsData {
+export interface IAppData {
     products: IProduct[];
     preview: string | null;
     order: IOrder;
@@ -24,13 +24,8 @@ export interface IProductsData {
 	checkValidation(data: Record<keyof IOrder, string>): boolean;
 }
 
-export interface IOrder {
-	payment: TPayment;
-	email: string;
-	phone: string;
-	address: string;
-	items: string[];
-	total: number;
+export interface IOrder extends IShippingForm, IContactForm {
+    
 }
 
 export interface IOrderResult {
