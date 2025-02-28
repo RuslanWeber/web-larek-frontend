@@ -62,6 +62,17 @@ interface IProduct {
 interface IProductsData {
     products: IProduct[];
     preview: string | null;
+    order: IOrder;
+    basket: IProduct[];
+    clearBasket(): void;
+    addToBasket(item: IProduct): void;
+	deleteFromBasket(itemId: number): void;
+	isLotInBasket(item: IProduct): boolean;
+	getTotalPrice(): number;
+	getBasketIds(): number[];
+	getBasketLength(): number;
+	clearOrder(): void;
+	checkValidation(data: Record<keyof IOrder, string>): boolean;
 }
 ```
 
@@ -73,8 +84,6 @@ interface IOrder {
 	email: string;
 	phone: string;
 	address: string;
-	items: string[];
-	total: number;
 }
 ```
 
@@ -117,7 +126,7 @@ export type IBasketItem = Pick<IProduct, 'id' | 'title' | 'price'>;
 Данные заказа, используемые в форме при создании заказа
 
 ```
-export type IDeliveryForm = Pick<IOrder, 'payment' | 'address'>
+export type IShippingForm = Pick<IOrder, 'payment' | 'address'>
 ```
 
 Данные заказа, используемые во второй форме при создании заказа
@@ -155,7 +164,7 @@ export type FormError = Partial<Record<keyof IOrder, string>>
 
 ## Слой данных
 
-### Класс IProductsData
+### Класс AppData
 Хранит глобальное состояние приложения, включая информацию о корзине, каталоге продуктов, заказе и ошибках формы.
 
 Поля класса:
@@ -214,11 +223,11 @@ export type FormError = Partial<Record<keyof IOrder, string>>
 
 Методы:
 - `onInputChange` — обработчик ввода, который отслеживает изменения в полях формы и эмиттирует соответствующие события.
-- `set valid` — контролирует активность кнопки отправки в зависимости от состояния валидации формы.
+- `changeButtonState` — контролирует активность кнопки отправки в зависимости от состояния валидации формы.
 - `set errors` — применяет и отображает ошибки валидации, обеспечивая обратную связь с пользователем.
 - `render` — обновляет состояние формы, устанавливая актуальные ошибки, валидность и введённые значения.
 
-### Page
+### Класс Page
 
 Класс, управляющий основными элементами страницы, такими как каталог товаров, счётчик товаров в корзине и глобальные состояния интерфейса. Позволяет блокировать прокрутку страницы при необходимости. Наследуется от Component.
 
@@ -231,13 +240,13 @@ export type FormError = Partial<Record<keyof IOrder, string>>
 - `set catalog` — заменяет текущее содержимое каталога переданными данными.
 - `set locked` — включает или отключает блокировку прокрутки и взаимодействия с интерфейсом.
 
-#### Класс BasketModal
+### Класс BasketModal
 Наследуемый класс от `Component`, предназначен для отображения и управления товаров в корзине.\
 `constructor(container: HTMLElement, events: EventEmitter)` - принимает контейнер страницы и объект для управлением событий.\
 Методы:
 
-- `toggleButton` - переключает состояние кнопки.\
-- `set items` - устанавливает товары в корзине.\
+- `toggleButton` - переключает состояние кнопки.
+- `set items` - устанавливает товары в корзине.
 - `set total` - устанавливает общую стоимость товаров.
 
 ### Класс ShippingForm
