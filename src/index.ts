@@ -13,7 +13,7 @@ import { Basket } from './components/base/BasketModal';
 import { ShippingForm } from './components/base/ShippingForm';
 import { Success } from './components/base/Success';
 import { Contacts } from './components/base/ContactForm';
-import { IContactForm, IShippingForm, IProduct } from './types';
+import { IContactForm, IShippingForm, IProduct, TPayment } from './types';
 
 const events = new EventEmitter();
 const api = new AppApi(CDN_URL, API_URL);
@@ -65,10 +65,24 @@ events.on('card:select', (item: IProduct) => {
 })
 
 
+events.on<CatalogChangeEvent>('items:changed', (data) => {
+    page.catalog = data.catalog.map(item => {
+        const productCard = new ProductCard('card', cloneTemplate(cardCatalogTemplate), {
+            onClick: () => events.emit('card:select', item)
+        });
+        return productCard.render({
+            title: item.title,
+            image: item.image,
+            price: item.price,
+            category: item.category
+        });
+    });
+});
+
 events.on('basket:changed', () => {
-    page.counter = appData.getOrderProducts().length
-    let total = 0
-    basket.items = appData.getOrderProducts().map((item, index) => {
+    page.counter = appData.basket.length; 
+    let total = 0;
+    basket.items = appData.basket.map((item, index) => {
         const card = new BasketItem(cloneTemplate(cardBasketTemplate), index, {
             onClick: () => {
                 appData.removeFromBasket(item.id);
@@ -79,12 +93,10 @@ events.on('basket:changed', () => {
         return card.render({
             title: item.title,
             price: item.price,
-        })
-    })
+        });
+    });
     basket.total = total;
-    //appState.order.total = total;
-})
-
+});
 
 events.on('counter:changed', () => {
     page.counter = appData.basket.length;
@@ -93,26 +105,25 @@ events.on('counter:changed', () => {
 
 events.on('product:add', (item: IProduct) => {
     appData.addToBasket(item);
-    modal.close();
+    // modal.close();
 })
-
 
 events.on('product:delete', (item: IProduct) => {
     appData.removeFromBasket(item.id);
 })
-
 
 events.on('preview:changed', (item: IProduct) => {
     if (item) {
         const productCard = new ProductCard('card', cloneTemplate(cardPreviewTemplate), {
             onClick: () => {
                 events.emit('product:add', item);
-                modal.close();
+                // modal.close();
             }
         });
+        const isInBasket = appData.basket.some(product => product.id === item.id);
         const buttonTitle: string = item.price === null 
-            ? (appData.productOrder(item) ? 'Получить ещё один' : 'Получить') 
-            : (appData.productOrder(item) ? 'Купить ещё один' : 'Купить');
+            ? (isInBasket ? 'Получить ещё один' : 'Получить') 
+            : (isInBasket ? 'Купить ещё один' : 'Купить');
         productCard.buttonTitle = buttonTitle;
         modal.render({
             content: productCard.render({
@@ -127,33 +138,30 @@ events.on('preview:changed', (item: IProduct) => {
     }
 });
 
-
 events.on('order:open', () => {
-    const orderData = appData.order;
+    const orderData = appData.getOrder();
+    const errors = !appData.formErrors;
+    console.log(errors)
     const paymentMethod = orderData.payment || '';
     appData.setPaymentMethod(paymentMethod);
     delivery.setToggleClassPayment(paymentMethod);
-    const isValid = orderData.payment !== '' && orderData.address !== '';
     modal.render({
         content: delivery.render({
-            payment: orderData.payment || '',
-            address: orderData.address || '',
-            valid: isValid,
+            payment: orderData.payment,
+            address: orderData.address,
+            valid: errors,
             errors: [],
         })
-    })
-})
-
+    });
+});
 
 events.on('order.payment:change', (data: { target: string }) => {
-	appData.setPaymentMethod(data.target);
-})
-
+    appData.setPaymentMethod(data.target);
+});
 
 events.on('order.address:change', (data: { value: string }) => {
-	appData.setOrderDeliveryField(data.value);
-})
-
+    appData.orderData.address = data.value;
+});
 
 events.on('deliveryFormError:change', (errors: Partial<IShippingForm>) => {
     const { payment, address } = errors;
@@ -161,9 +169,8 @@ events.on('deliveryFormError:change', (errors: Partial<IShippingForm>) => {
     delivery.errors = Object.values({ payment, address }).filter(i => !!i).join('; ');
 })
 
-
 events.on('order:submit', () => {
-    const orderData = appData.order;
+    const orderData = appData.orderData;
     const isValid = orderData.phone !== '' && orderData.email !== '';
     modal.render({
         content: contact.render({
@@ -175,11 +182,9 @@ events.on('order:submit', () => {
     })
 })
 
-
 events.on(/^contacts\..*:change/, (data: {field: keyof IContactForm, value: string}) => {
     appData.setOrderContactField(data.field, data.value);
 })
-
 
 events.on('contactFormError:change', (errors: Partial<IContactForm>) => {
     const { email, phone } = errors;
@@ -187,31 +192,26 @@ events.on('contactFormError:change', (errors: Partial<IContactForm>) => {
     contact.errors = Object.values({ phone, email }).filter(i => !!i).join('; ');
 })
 
-
 events.on('contacts:submit', () => {
-    let total = 0;
-    appData.getOrderProducts().forEach((item) => { total += item.price });
-    appData.order.total = total;
-    appData.order.items = appData.basket
-        .filter((item) => item.price != null)
-        .map((item) => item.id);
-    api.orderProduct(appData.order)
-    .then((result) => {
-        appData.clearBasket()
-        appData.clearOrder()
-        appData.setPaymentMethod('');
-        delivery.setToggleClassPayment('');
-        modal.render({
-            content: success.render({
-            total: result.total,
-            })
+    appData.orderData.total = appData.getCoast();
+    appData.orderData.items = appData.getListIds();
+    const orderData = appData.getOrderData();
+    console.log("Отправка заказа:", orderData);
+    
+    api.orderProduct(appData.getOrderData()) 
+        .then((result) => {
+            appData.clearBasket();
+            appData.clearOrder();
+            modal.render({
+                content: success.render({
+                    total: result.total,
+                })
+            });
         })
-    })
-    .catch(err => {
-        console.error(err);
-    })
-})
-
+        .catch(err => {
+            console.error(err);
+        });
+});
 
 events.on('modal:open', () => {
     page.locked = true;
