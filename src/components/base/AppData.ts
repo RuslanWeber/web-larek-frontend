@@ -9,17 +9,38 @@ export type CatalogChangeEvent = {
 export class AppData extends Model<IAppData> {
     products: IProduct[];
     preview: string | null;
-    order: IOrder = {
+    orderData: IOrder = {
         payment: '',
-        items: [],
-        total: 0,
         email: '',
         phone: '',
-        address: ''
-    };
+        address: '',
+        items: [],
+        total: 0
+    } ;
     basket: IProduct[] = [];
     events: IEvents;
     formErrors: FormErrors = {};
+
+    getOrder(): Omit<IOrder, 'items' | 'total'> {
+        return { ...this.orderData };
+    }
+
+    getOrderData(): IOrder {
+        return {
+            ...this.orderData,
+            total: this.getCoast(),
+            items: this.getListIds()
+        };
+    }
+
+    getCoast(): number {
+        return this.orderData.items.reduce((total, item) => 
+        total + this.products.find(it => it.id === item).price, 0);
+    }
+
+    getListIds(): string[] {
+        return this.basket.map(product => product.id);
+    }
 
     setProducts(items: IProduct[]) {
         this.products = items;
@@ -52,50 +73,37 @@ export class AppData extends Model<IAppData> {
     }
 
     clearOrder() {
-        this.order = {
+        this.orderData = {
             payment: '',
-            items: [],
-            total: 0,
             email: '',
             phone: '',
-            address: ''
+            address: '',
+            items: [],
+            total: 0
         }
     }
 
-    getTotalPrice(): number {
-        return this.order.items.reduce((total, item) => 
-        total + this.products.find(it => it.id === item).price, 0);
-    }
-
-    getOrderProducts(): IProduct[] {
-		return this.basket;
-	}
-
-    productOrder(item: IProduct): boolean {
-        return this.basket.includes(item);
-    } 
-
     setPaymentMethod(method: string) {
-        this.order.payment = method as TPayment;
+        this.orderData.payment = method as TPayment;
         this.validateDelivery();
     }
 
     setOrderDeliveryField(value: string) {
-        this.order.address = value;
+        this.orderData.address = value;
         this.validateDelivery();
     }
 
     setOrderContactField(field: keyof IContactForm, value: string) {
-        this.order[field] = value;
+        this.orderData[field] = value;
         this.validateContact();
     }
 
     validateDelivery() {
         const errors: typeof this.formErrors = {};
-        if (!this.order.payment) {
+        if (!this.orderData.payment) {
 			errors.payment = 'Необходимо указать способ оплаты';
 		}
-        if (!this.order.address) {
+        if (!this.orderData.address) {
             errors.address = 'Необходимо указать адрес';
         }
         this.formErrors = errors;
@@ -105,10 +113,10 @@ export class AppData extends Model<IAppData> {
 
     validateContact() {
         const errors: typeof this.formErrors = {};
-        if (!this.order.email) {
+        if (!this.orderData.email) {
             errors.email = 'Необходимо указать email';
         }
-        if (!this.order.phone) {
+        if (!this.orderData.phone) {
             errors.phone = 'Необходимо указать телефон';
         }
         this.formErrors = errors;
