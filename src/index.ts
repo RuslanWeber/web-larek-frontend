@@ -105,8 +105,9 @@ events.on('counter:changed', () => {
 
 events.on('product:add', (item: IProduct) => {
     appData.addToBasket(item);
-    // modal.close();
+    // modal.close();   
 })
+
 
 events.on('product:delete', (item: IProduct) => {
     appData.removeFromBasket(item.id);
@@ -143,7 +144,6 @@ events.on('order:open', () => {
     const errors = !appData.formErrors;
     console.log(errors)
     const paymentMethod = orderData.payment || '';
-    appData.setPaymentMethod(paymentMethod);
     delivery.setToggleClassPayment(paymentMethod);
     modal.render({
         content: delivery.render({
@@ -193,15 +193,18 @@ events.on('contactFormError:change', (errors: Partial<IContactForm>) => {
 })
 
 events.on('contacts:submit', () => {
-    appData.orderData.total = appData.getCoast();
-    appData.orderData.items = appData.getListIds();
-    const orderData = appData.getOrderData();
+    const orderData = {
+        ...appData.getOrder(),
+        items: appData.getListIds(),
+        total: appData.getCoast(),
+    };
     console.log("Отправка заказа:", orderData);
     
     api.orderProduct(appData.getOrderData()) 
         .then((result) => {
             appData.clearBasket();
             appData.clearOrder();
+            // delivery.setToggleClassPayment('');//////////
             modal.render({
                 content: success.render({
                     total: result.total,
