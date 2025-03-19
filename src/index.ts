@@ -200,11 +200,10 @@ events.on('contacts:submit', () => {
     };
     console.log("Отправка заказа:", orderData);
     
-    api.orderProduct(appData.getOrderData()) 
+    api.orderProduct(orderData) 
         .then((result) => {
             appData.clearBasket();
             appData.clearOrder();
-            // delivery.setToggleClassPayment('');//////////
             modal.render({
                 content: success.render({
                     total: result.total,
